@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>월페이퍼 이벤트 지도</title>
+<style>
+  :root {
+    --gap: 14px;           /* 핫스팟과 팝업 사이 간격 */
+    --popup-max-h: 130px;  /* 팝업 이미지 최대 높이 (더 작게 보이고 싶으면 이 값을 줄이세요) */
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 24px;
+    background: #14171c;
+    display: flex;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+
+  .map-container {
+    position: relative;
+    width: 100%;
+    max-width: 1400px;
+    /* 원본 비율(2223 x 1465)을 항상 유지 → 좌표가 항상 정확히 맞음 */
+    aspect-ratio: 2223 / 1465;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  }
+
+  .map-container img.base {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    display: block;
+    object-fit: cover;
+    -webkit-user-drag: none;
+    user-select: none;
+  }
+
+  /* 마우스를 올릴 영역 (기본적으로 눈에 안 보임) */
+  .hotspot {
+    position: absolute;
+    cursor: pointer;
+    /* 개발 중 위치 확인하려면 아래 주석을 해제하세요 */
+    /* background: rgba(255, 0, 0, 0.25); */
+  }
+
+  .hotspot.circle {
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  /* 팝업 이미지 */
+  #popup {
+    position: absolute;
+    top: 0;
+    left: 0;
+    max-height: var(--popup-max-h);
+    width: auto;
+    pointer-events: none;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease;
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+    z-index: 10;
+  }
+
+  #popup.visible {
+    opacity: 1;
+    visibility: visible;
+  }
+</style>
+</head>
+<body>
+
+<div class="map-container" id="mapContainer">
+  <img class="base" src="https://raw.githubusercontent.com/kindsmile193163-blip/wallpaper2/refs/heads/main/wallpaper.jpg" alt="wallpaper">
+  <img id="popup" src="" alt="">
+</div>
+
+<script>
+(function () {
+  const BASE_URL = "https://raw.githubusercontent.com/kindsmile193163-blip/wallpaper2/refs/heads/main/";
+  const ORIG_W = 2223;
+  const ORIG_H = 1465;
+
+  // 원본 이미지 픽셀 기준 좌표 데이터
+  // circle: {type:'circle', x, y, r}
+  // poly:   {type:'poly', points:[[x,y], ...]}  → 자동으로 중심점/영역 계산
+  const AREAS = [
+    { title: "달걀축제",   type: "circle", x: 795,  y: 371,  r: 26 },
+    { title: "리리생일",   type: "circle", x: 706,  y: 510,  r: 24 },
+    { title: "봄꽃무도회", type: "circle", x: 434,  y: 609,  r: 25 },
+    { title: "루아우",     type: "circle", x: 1672, y: 375,  r: 28 },
+    { title: "달빛해파리", type: "circle", x: 2029, y: 618,  r: 28 },
+    { title: "사귄날",     type: "circle", x: 936,  y: 1118, r: 28 },
+    { title: "품평회",     type: "circle", x: 432,  y: 1224, r: 24 },
+    { title: "루카스생일", type: "circle", x: 343,  y: 1354, r: 27 },
+    { title: "할로윈",     type: "circle", x: 787,  y: 1342, r: 25 },
+    { title: "얼음축제",   type: "circle", x: 1315, y: 1107, r: 22 },
+    { title: "크리스마스", type: "circle", x: 1670, y: 1345, r: 22 },
+    { title: "사막축제",   type: "poly", points: [[171,472],[445,474],[445,500],[169,496]] },
+    { title: "송어시합",   type: "poly", points: [[1872,476],[2039,476],[2041,502],[1868,502],[1866,504]] },
+    { title: "야시장",     type: "poly", points: [[1295,1212],[1544,1206],[1544,1227],[1293,1231]] },
+    { title: "오징어축제", type: "poly", points: [[1880,1096],[2033,1098],[2035,1121],[1882,1119]] },
+  ];
+
+  const container = document.getElementById("mapContainer");
+  const popup = document.getElementById("popup");
+
+  // poly의 바운딩 박스 계산
+  function getBBox(points) {
+    const xs = points.map(p => p[0]);
+    const ys = points.map(p => p[1]);
+    const minX = Math.min(...xs), maxX = Math.max(...xs);
+    const minY = Math.min(...ys), maxY = Math.max(...ys);
+    return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
+  }
+
+  // 핫스팟 DOM 생성 (원본 픽셀 좌표를 %로 변환 → 반응형에서도 항상 정확)
+  AREAS.forEach(area => {
+    const el = document.createElement("div");
+    el.className = "hotspot";
+
+    if (area.type === "circle") {
+      el.classList.add("circle");
+      el.style.left = (area.x / ORIG_W * 100) + "%";
+      el.style.top = (area.y / ORIG_H * 100) + "%";
+      el.style.width = (area.r * 2 / ORIG_W * 100) + "%";
+      el.style.height = (area.r * 2 / ORIG_H * 100) + "%";
+      // 핫스팟 중심점(px 계산용으로 저장)
+      area._centerXRatio = area.x / ORIG_W;
+      area._centerYRatio = area.y / ORIG_H;
+    } else {
+      const bbox = getBBox(area.points);
+      el.style.left = (bbox.x / ORIG_W * 100) + "%";
+      el.style.top = (bbox.y / ORIG_H * 100) + "%";
+      el.style.width = (bbox.w / ORIG_W * 100) + "%";
+      el.style.height = (bbox.h / ORIG_H * 100) + "%";
+      area._centerXRatio = (bbox.x + bbox.w / 2) / ORIG_W;
+      area._centerYRatio = (bbox.y + bbox.h / 2) / ORIG_H;
+    }
+
+    el.title = area.title;
+    el.addEventListener("mouseenter", () => showPopup(area));
+    el.addEventListener("mouseleave", hidePopup);
+
+    container.appendChild(el);
+  });
+
+  function showPopup(area) {
+    const fileUrl = BASE_URL + encodeURIComponent(area.title) + ".png";
+    popup.src = fileUrl;
+
+    // 이미지가 로드된 뒤 실제 크기를 알아야 화면 밖으로 안 나가게 위치를 잡을 수 있음
+    popup.onload = () => positionPopup(area);
+    popup.classList.add("visible");
+
+    // 이미 로드되어 있던 이미지가 재사용되는 경우 onload가 안 불릴 수 있어 즉시도 한번 시도
+    if (popup.complete) positionPopup(area);
+  }
+
+  function positionPopup(area) {
+    const rect = container.getBoundingClientRect();
+    const cx = area._centerXRatio * rect.width;   // 핫스팟 중심의 컨테이너 내 px 좌표
+    const cy = area._centerYRatio * rect.height;
+
+    const gap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--gap")) || 14;
+    const popupW = popup.offsetWidth;
+    const popupH = popup.offsetHeight;
+
+    // 기본: 핫스팟 위쪽 중앙에 배치
+    let left = cx - popupW / 2;
+    let top = cy - popupH - gap;
+
+    // 위쪽 공간이 부족하면 아래쪽으로 표시
+    if (top < 0) {
+      top = cy + gap;
+    }
+
+    // 좌우로 화면(컨테이너) 밖으로 나가지 않게 보정
+    if (left < 0) left = 4;
+    if (left + popupW > rect.width) left = rect.width - popupW - 4;
+
+    popup.style.left = left + "px";
+    popup.style.top = top + "px";
+  }
+
+  function hidePopup() {
+    popup.classList.remove("visible");
+  }
+})();
+</script>
+
+</body>
+</html>
