@@ -7,30 +7,31 @@
 <style>
   :root {
     --gap: 14px;           /* 핫스팟과 팝업 사이 간격 */
-    --popup-max-h: 30px;  /* 팝업 이미지 최대 높이 (더 작게 보이고 싶으면 이 값을 줄이세요) */
+    --popup-max-h: 130px;  /* 팝업 이미지 최대 높이 (더 작게 보이고 싶으면 이 값을 줄이세요) */
   }
 
   * { box-sizing: border-box; }
 
   body {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  display: flex;
-  justify-content: center;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
+    margin: 0;
+    padding: 24px;
+    background: #14171c;
+    display: flex;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
 
-.map-container {
-  position: relative;
-  width: 100%;
-  max-width: none;
-  aspect-ratio: 2223 / 1465;
-  border-radius: 0;
-  overflow: hidden;
-  box-shadow: none;
-}
-  
+  .map-container {
+    position: relative;
+    width: 100%;
+    max-width: 1400px;
+    /* 원본 비율(2223 x 1465)을 항상 유지 → 좌표가 항상 정확히 맞음 */
+    aspect-ratio: 2223 / 1465;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  }
+
   .map-container img.base {
     position: absolute;
     inset: 0;
@@ -91,23 +92,26 @@
 
   // 원본 이미지 픽셀 기준 좌표 데이터
   // circle: {type:'circle', x, y, r}
-  // poly:   {type:'poly', points:[[x,y], ...]}  → 자동으로 중심점/영역 계산
+  // poly:   {type:'poly', points:[[x,y], ...]}                → 자동으로 바운딩 박스 계산
+  // rect:   {type:'rect', x1, y1, x2, y2}  (좌상단, 우하단 좌표) → 자동으로 바운딩 박스 계산
   const AREAS = [
-    { title: "달걀축제",   type: "circle", x: 795,  y: 371,  r: 26 },
-    { title: "리리생일",   type: "circle", x: 706,  y: 510,  r: 24 },
-    { title: "봄꽃무도회", type: "circle", x: 434,  y: 609,  r: 25 },
-    { title: "루아우",     type: "circle", x: 1672, y: 375,  r: 28 },
-    { title: "달빛해파리", type: "circle", x: 2029, y: 618,  r: 28 },
-    { title: "사귄날",     type: "circle", x: 936,  y: 1118, r: 28 },
-    { title: "품평회",     type: "circle", x: 432,  y: 1224, r: 24 },
-    { title: "루카스생일", type: "circle", x: 343,  y: 1354, r: 27 },
-    { title: "할로윈",     type: "circle", x: 787,  y: 1342, r: 25 },
-    { title: "얼음축제",   type: "circle", x: 1315, y: 1107, r: 22 },
-    { title: "크리스마스", type: "circle", x: 1670, y: 1345, r: 22 },
-    { title: "사막축제",   type: "poly", points: [[171,472],[445,474],[445,500],[169,496]] },
-    { title: "송어시합",   type: "poly", points: [[1872,476],[2039,476],[2041,502],[1868,502],[1866,504]] },
-    { title: "야시장",     type: "poly", points: [[1295,1212],[1544,1206],[1544,1227],[1293,1231]] },
-    { title: "오징어축제", type: "poly", points: [[1880,1096],[2033,1098],[2035,1121],[1882,1119]] },
+    { title: "달걀축제",     type: "circle", x: 795,  y: 371,  r: 26 },
+    { title: "리리생일",     type: "circle", x: 706,  y: 510,  r: 24 },
+    { title: "봄꽃무도회",   type: "circle", x: 434,  y: 609,  r: 25 },
+    { title: "루아우",       type: "circle", x: 1672, y: 375,  r: 28 },
+    { title: "달빛해파리",   type: "circle", x: 2029, y: 618,  r: 28 },
+    { title: "사귄날",       type: "circle", x: 936,  y: 1118, r: 28 },
+    { title: "품평회",       type: "circle", x: 432,  y: 1224, r: 24 },
+    { title: "루카스생일",   type: "circle", x: 343,  y: 1354, r: 27 },
+    { title: "할로윈",       type: "circle", x: 787,  y: 1342, r: 25 },
+    { title: "얼음축제",     type: "circle", x: 1315, y: 1107, r: 22 },
+    { title: "크리스마스",   type: "circle", x: 1670, y: 1345, r: 22 },
+    { title: "사막축제",     type: "poly", points: [[171,472],[445,474],[445,500],[169,496]] },
+    { title: "송어시합",     type: "poly", points: [[1872,476],[2039,476],[2041,502],[1868,502],[1866,504]] },
+    { title: "야시장",       type: "poly", points: [[1295,1212],[1544,1206],[1544,1227],[1293,1231]] },
+    { title: "오징어축제",   type: "rect", x1: 1736, y1: 1083, x2: 1891, y2: 1118 },
+    { title: "발렌타인데이", type: "rect", x1: 863,  y1: 353,  x2: 905,  y2: 387 },
+    { title: "결혼기념일",   type: "rect", x1: 906,  y1: 544,  x2: 955,  y2: 589 },
   ];
 
   const container = document.getElementById("mapContainer");
@@ -136,6 +140,19 @@
       // 핫스팟 중심점(px 계산용으로 저장)
       area._centerXRatio = area.x / ORIG_W;
       area._centerYRatio = area.y / ORIG_H;
+    } else if (area.type === "rect") {
+      const bbox = {
+        x: Math.min(area.x1, area.x2),
+        y: Math.min(area.y1, area.y2),
+        w: Math.abs(area.x2 - area.x1),
+        h: Math.abs(area.y2 - area.y1),
+      };
+      el.style.left = (bbox.x / ORIG_W * 100) + "%";
+      el.style.top = (bbox.y / ORIG_H * 100) + "%";
+      el.style.width = (bbox.w / ORIG_W * 100) + "%";
+      el.style.height = (bbox.h / ORIG_H * 100) + "%";
+      area._centerXRatio = (bbox.x + bbox.w / 2) / ORIG_W;
+      area._centerYRatio = (bbox.y + bbox.h / 2) / ORIG_H;
     } else {
       const bbox = getBBox(area.points);
       el.style.left = (bbox.x / ORIG_W * 100) + "%";
